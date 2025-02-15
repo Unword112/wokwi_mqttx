@@ -42,14 +42,14 @@ void callback(char *topic, byte *payload, unsigned int length) {
 
   if (mes == "on") {
     Serial.println("Turning LED ON");
-    digitalWrite(ledPin, HIGH);
     ledState = true;
   } 
   else if (mes == "off") {
     Serial.println("Turning LED OFF");
-    digitalWrite(ledPin, LOW);
     ledState = false;
   }
+
+  digitalWrite(ledPin, !ledState);  // แก้ไขตรงนี้
 }
 
 void setup() {
@@ -86,14 +86,10 @@ void loop() {
     ledState = !ledState; // Toggle LED state
     String message;
 
-    if (ledState) {
-      message = "on";
-      delay(500);
-    } else if(!ledState) {
-      message = "off";
-      delay(500);
-    }
-    
+    message = ledState ? "on" : "off"; 
+    digitalWrite(ledPin, !ledState);  // แก้ไขตรงนี้
+    delay(500);
+
     mqttClient.publish("esp32/led", message.c_str()); // ส่งค่าไปยัง MQTTX
     Serial.print("Sent to MQTT: ");
     Serial.println(message);
