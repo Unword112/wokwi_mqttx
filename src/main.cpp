@@ -4,7 +4,7 @@
 const char* ssid = "Wokwi-GUEST";
 const char* password = ""; 
 
-#define mqttServer ""
+#define mqttServer "broker.emqx.io"
 #define mqttPort  1883
 
 WiFiClient espClient;
@@ -13,22 +13,24 @@ PubSubClient mqttClient(espClient);
 const int ledPin = 4;
 const int buttonPin = 32;
 
-bool buttonState = false;  // สถานะปุ่มก่อนหน้า
-bool ledState = false;     // สถานะ LED
+bool buttonState = false;
+bool ledState = false;
 
 void reconnect() {
-  while (!mqttClient.connected()) {
-    Serial.print("Connecting to MQTT...");
-    if (mqttClient.connect("ESP32_Client")) {
-      Serial.println("Connected!");
-      mqttClient.subscribe("esp32/led");  // Subscribe หัวข้อที่ต้องการ
-    } else {
-      Serial.print("Failed, rc=");
-      Serial.print(mqttClient.state());
-      Serial.println(" retrying in 5 seconds...");
-      delay(5000);
+    while (!mqttClient.connected()) {
+      Serial.print("Connecting to MQTT...");
+  
+      String clientId = "ESP32_" + String(random(1000, 9999));
+      if (mqttClient.connect(clientId.c_str())) {
+        Serial.println("Connected!");
+        mqttClient.subscribe("esp32/led"); 
+      } else {
+        Serial.print("Failed, rc=");
+        Serial.print(mqttClient.state());
+        Serial.println(" retrying in 5 seconds...");
+        delay(5000);
+      }
     }
-  }
 }
 
 void callback(char *topic, byte *payload, unsigned int length) {
@@ -49,7 +51,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
     ledState = false;
   }
 
-  digitalWrite(ledPin, !ledState);  // แก้ไขตรงนี้
+  digitalWrite(ledPin, !ledState);
 }
 
 void setup() {
@@ -57,7 +59,7 @@ void setup() {
   WiFi.begin(ssid, password);
 
   pinMode(ledPin, OUTPUT);
-  pinMode(buttonPin, INPUT_PULLUP); // ตั้งค่า INPUT_PULLUP (ปุ่มกดใช้ LOW เป็นกด)
+  pinMode(buttonPin, INPUT_PULLUP);
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -70,6 +72,7 @@ void setup() {
 
   mqttClient.setServer(mqttServer, mqttPort);
   mqttClient.setCallback(callback);
+  
 
   reconnect();
 }
@@ -78,22 +81,22 @@ void loop() {
   if (!mqttClient.connected()) {
     reconnect();
   }
-  mqttClient.loop(); // Keep MQTT connection alive
+  mqttClient.loop();
 
-  bool currentButtonState = digitalRead(buttonPin) == LOW; // ปุ่มกดเป็น LOW
+  bool currentButtonState = digitalRead(buttonPin) == LOW;
   
-  if (currentButtonState && !buttonState) {  // ตรวจจับการเปลี่ยนสถานะปุ่ม (Press)
-    ledState = !ledState; // Toggle LED state
+  if (currentButtonState && !buttonState) { 
+    ledState = !ledState;
     String message;
 
     message = ledState ? "on" : "off"; 
-    digitalWrite(ledPin, !ledState);  // แก้ไขตรงนี้
+    digitalWrite(ledPin, !ledState);
     delay(500);
 
-    mqttClient.publish("esp32/led", message.c_str()); // ส่งค่าไปยัง MQTTX
+    mqttClient.publish("esp32/led", message.c_str());
     Serial.print("Sent to MQTT: ");
     Serial.println(message);
   }
 
-  buttonState = currentButtonState; // อัปเดตสถานะปุ่ม
+  buttonState = currentButtonState;
 }
